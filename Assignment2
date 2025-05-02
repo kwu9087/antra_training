@@ -1,0 +1,357 @@
+--1 Found 504
+SELECT COUNT(p.ProductID)
+FROM Production.Product p
+
+--2 Found 295
+SELECT COUNT(p.ProductID)
+FROM Production.Product p
+WHERE p.ProductSubcategoryID IS NOT NULL
+
+--3
+SELECT p.ProductSubcategoryID, COUNT(p.ProductID) AS CountedProducts
+FROM Production.Product p
+WHERE p.ProductSubcategoryID IS NOT NULL
+GROUP BY p.ProductSubcategoryID
+
+--4 Found 209
+SELECT COUNT(p.ProductID)
+FROM Production.Product p
+WHERE p.ProductSubcategoryID IS NULL
+
+--5
+SELECT SUM(p.Quantity)
+FROM Production.ProductInventory p
+
+--6
+SELECT
+    ProductID,
+    SUM(Quantity) AS TheSum
+FROM
+    Production.ProductInventory
+WHERE
+    LocationID = 40
+GROUP BY
+    ProductID
+HAVING
+    SUM(Quantity) < 100
+ORDER BY
+    ProductID;
+
+--7
+SELECT
+    Shelf,
+    ProductID,
+    SUM(Quantity) AS TheSum
+FROM
+    Production.ProductInventory
+WHERE
+    LocationID = 40
+GROUP BY
+    Shelf,
+    ProductID
+HAVING
+    SUM(Quantity) < 100
+ORDER BY
+    Shelf,
+    ProductID;
+
+--8
+SELECT
+    AVG(Quantity) AS AverageQuantityAtLocation10
+FROM
+    Production.ProductInventory
+WHERE
+    LocationID = 10;
+
+--9
+SELECT
+    ProductID,
+    Shelf,
+    AVG(Quantity) AS TheAvg
+FROM
+    Production.ProductInventory
+GROUP BY
+    ProductID,
+    Shelf
+ORDER BY
+    ProductID,
+    Shelf;
+
+--10
+SELECT
+    ProductID,
+    Shelf,
+    AVG(Quantity) AS TheAvg
+FROM
+    Production.ProductInventory
+WHERE
+    Shelf <> 'N/A' 
+GROUP BY
+    ProductID,
+    Shelf
+ORDER BY
+    ProductID,
+    Shelf;
+
+--11
+SELECT
+    Color,
+    Class,
+    COUNT(*) AS TheCount,
+    AVG(ListPrice) AS AvgPrice
+FROM
+    Production.Product
+WHERE
+    Color IS NOT NULL
+    AND Class IS NOT NULL
+GROUP BY
+    GROUPING SETS ((Color), (Class))
+ORDER BY
+    Color,
+    Class;
+
+--12
+SELECT
+    cr.Name AS Country,
+    sp.Name AS Province
+FROM
+    Person.CountryRegion AS cr
+INNER JOIN
+    Person.StateProvince AS sp ON cr.CountryRegionCode = sp.CountryRegionCode
+ORDER BY
+    Country,
+    Province;
+
+--13
+SELECT
+    cr.Name AS Country,
+    sp.Name AS Province
+FROM
+    Person.CountryRegion AS cr
+INNER JOIN
+    Person.StateProvince AS sp ON cr.CountryRegionCode = sp.CountryRegionCode
+WHERE
+    cr.Name IN ('Germany', 'Canada')
+ORDER BY
+    Country,
+    Province;
+
+--14
+DECLARE @StartDate DATETIME = DATEADD(year, -27, GETDATE())
+
+SELECT DISTINCT
+    p.ProductName
+FROM
+    Products AS p
+JOIN
+    "Order Details" AS od ON p.ProductID = od.ProductID
+JOIN
+    Orders AS o ON od.OrderID = o.OrderID
+WHERE
+    o.OrderDate >= @StartDate -- Use the calculated start date
+ORDER BY
+    p.ProductName;
+
+--15
+SELECT TOP 5 
+    o.ShipPostalCode,
+    SUM(od.Quantity) AS TotalQuantitySold
+FROM
+    Orders AS o
+JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+WHERE
+    o.ShipPostalCode IS NOT NULL AND o.ShipPostalCode <> '' 
+GROUP BY
+    o.ShipPostalCode
+ORDER BY
+    TotalQuantitySold DESC;
+
+--16
+DECLARE @StartDate27 DATETIME = DATEADD(year, -27, GETDATE())
+
+SELECT TOP 5 
+    o.ShipPostalCode,
+    SUM(od.Quantity) AS TotalQuantitySold
+FROM
+    Orders AS o
+JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+WHERE
+    o.OrderDate >= @StartDate27
+    AND o.ShipPostalCode IS NOT NULL AND o.ShipPostalCode <> ''
+GROUP BY
+    o.ShipPostalCode
+ORDER BY
+    TotalQuantitySold DESC;
+
+--17
+SELECT
+    City,
+    COUNT(CustomerID) AS NumberOfCustomers
+FROM
+    Customers
+GROUP BY
+    City
+ORDER BY
+    City;
+
+--18
+SELECT
+    City,
+    COUNT(CustomerID) AS NumberOfCustomers
+FROM
+    Customers
+GROUP BY
+    City
+HAVING
+    COUNT(CustomerID) > 2
+ORDER BY
+    City;
+
+--19
+SELECT
+    c.CompanyName, -- Or c.ContactName if preferred
+    o.OrderDate
+FROM
+    Customers AS c
+JOIN
+    Orders AS o ON c.CustomerID = o.CustomerID
+WHERE
+    o.OrderDate > '1998-01-01'
+ORDER BY
+    c.CompanyName,
+    o.OrderDate;
+
+--20
+WITH RankedOrders AS (
+    SELECT
+        CustomerID,
+        OrderDate,
+        ROW_NUMBER() OVER(PARTITION BY CustomerID ORDER BY OrderDate DESC) as rn
+    FROM Orders
+)
+SELECT
+    c.CompanyName, -- Or c.ContactName
+    ro.OrderDate AS MostRecentOrderDate
+FROM
+    Customers c
+JOIN
+    RankedOrders ro ON c.CustomerID = ro.CustomerID
+WHERE
+    ro.rn = 1
+ORDER BY
+    c.CompanyName;
+
+--21
+SELECT
+    c.CompanyName, 
+    ISNULL(SUM(od.Quantity), 0) AS TotalProductsBoughtrs
+FROM
+    Customers AS c
+LEFT JOIN 
+    Orders AS o ON c.CustomerID = o.CustomerID
+LEFT JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+GROUP BY
+    c.CustomerID, c.CompanyName 
+ORDER BY
+    c.CompanyName;
+
+--22
+SELECT
+    c.CustomerID,
+    SUM(od.Quantity) AS TotalProductsBought
+FROM
+    Customers AS c
+JOIN
+    Orders AS o ON c.CustomerID = o.CustomerID
+JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+GROUP BY
+    c.CustomerID
+HAVING
+    SUM(od.Quantity) > 100
+ORDER BY
+    c.CustomerID;
+
+--23
+SELECT DISTINCT 
+    sup.CompanyName AS [Supplier Company Name], 
+    shp.CompanyName AS [Shipping Company Name]
+FROM
+    Suppliers AS sup
+CROSS JOIN
+    Shippers AS shp
+ORDER BY
+    [Supplier Company Name],
+    [Shipping Company Name];
+
+--24
+SELECT
+    o.OrderDate,
+    p.ProductName
+FROM
+    Orders AS o
+JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+JOIN
+    Products AS p ON od.ProductID = p.ProductID
+ORDER BY
+    o.OrderDate,
+    p.ProductName;
+
+--25
+SELECT
+    e1.FirstName + ' ' + e1.LastName AS Employee1,
+    e2.FirstName + ' ' + e2.LastName AS Employee2,
+    e1.Title
+FROM
+    Employees AS e1
+JOIN
+    Employees AS e2 ON e1.Title = e2.Title 
+WHERE
+    e1.EmployeeID < e2.EmployeeID
+ORDER BY
+    e1.Title,
+    Employee1,
+    Employee2;
+
+--26
+SELECT
+    m.FirstName + ' ' + m.LastName AS ManagerName,
+    COUNT(e.EmployeeID) AS NumberOfReports
+FROM
+    Employees AS e 
+JOIN
+    Employees AS m ON e.ReportsTo = m.EmployeeID 
+GROUP BY
+    m.EmployeeID, m.FirstName, m.LastName
+HAVING
+    COUNT(e.EmployeeID) > 2
+ORDER BY
+    ManagerName;
+
+--27
+SELECT
+    City,
+    CompanyName AS Name,
+    ContactName,
+    'Customer' AS Type
+FROM
+    Customers
+
+UNION ALL
+
+SELECT
+    City,
+    CompanyName AS Name,
+    ContactName,
+    'Supplier' AS Type
+FROM
+    Suppliers
+
+ORDER BY
+    City,
+    Type,
+    Name;
