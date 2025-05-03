@@ -1,0 +1,197 @@
+--1
+SELECT e.City
+FROM Employees e JOIN Customers c on e.City = c.City
+
+--2
+SELECT c.City
+FROM Customers c
+WHERE c.City NOT IN (SELECT e.City
+					FROM Employees e
+)
+
+SELECT c.City
+FROM Customers c LEFT JOIN Employees e on c.City= e.City
+WHERE e.City IS NULL 
+
+--3
+SELECT p.ProductName, SUM(od.Quantity) AS TotalQuantityOrdered
+FROM Products p JOIN "Order Details" AS od ON p.ProductID = od.ProductID
+GROUP BY
+    p.ProductName
+ORDER BY
+    p.ProductName;
+
+--4
+SELECT
+    c.City AS CustomerCity,
+    SUM(od.Quantity) AS TotalProductsOrdered
+FROM
+    Customers AS c
+JOIN
+    Orders AS o ON c.CustomerID = o.CustomerID
+JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+GROUP BY
+    c.City
+ORDER BY
+    c.City;
+
+--5
+SELECT
+    City
+FROM
+    Customers
+GROUP BY
+    City
+HAVING
+    COUNT(CustomerID) >= 2
+ORDER BY
+    City;
+
+--6
+SELECT
+    c.City AS CustomerCity
+FROM
+    Customers AS c
+JOIN
+    Orders AS o ON c.CustomerID = o.CustomerID
+JOIN
+    "Order Details" AS od ON o.OrderID = od.OrderID
+GROUP BY
+    c.City
+HAVING
+    COUNT(DISTINCT od.ProductID) >= 2
+ORDER BY
+    c.City;
+
+--7
+SELECT
+    c.CustomerID,
+    c.CompanyName,
+    c.City AS CustomerCity,
+    o.ShipCity
+FROM
+    Customers AS c
+JOIN
+    Orders AS o ON c.CustomerID = o.CustomerID
+WHERE
+    c.City <> o.ShipCity 
+ORDER BY
+    c.CompanyName;
+
+--8
+WITH ProductPopularity AS (
+    
+    SELECT
+        od.ProductID,
+        SUM(od.Quantity) AS TotalQuantity
+    FROM
+        "Order Details" AS od
+    GROUP BY
+        od.ProductID
+),
+RankedCitiesPerProduct AS (
+    SELECT
+        od.ProductID,
+        c.City AS CustomerCity,
+        SUM(od.Quantity) AS QuantityFromCity,
+        ROW_NUMBER() OVER(PARTITION BY od.ProductID ORDER BY SUM(od.Quantity) DESC) as rn
+    FROM
+        "Order Details" AS od
+    JOIN
+        Orders AS o ON od.OrderID = o.OrderID
+    JOIN
+        Customers AS c ON o.CustomerID = c.CustomerID
+    GROUP BY
+        od.ProductID,
+        c.City
+),
+ProductAvgPrice AS (
+ 
+    SELECT
+        ProductID,
+        AVG(UnitPrice) as AveragePrice
+    FROM
+        "Order Details"
+    GROUP BY
+        ProductID
+)
+
+SELECT TOP 5
+    p.ProductName,
+    pp.TotalQuantity,
+    pap.AveragePrice,
+    rc.CustomerCity AS TopOrderingCity
+FROM
+    ProductPopularity AS pp
+JOIN
+    Products AS p ON pp.ProductID = p.ProductID
+JOIN
+    ProductAvgPrice AS pap ON pp.ProductID = pap.ProductID
+JOIN
+    RankedCitiesPerProduct AS rc ON pp.ProductID = rc.ProductID AND rc.rn = 1 
+ORDER BY
+    pp.TotalQuantity DESC; 
+
+--9
+SELECT DISTINCT
+    e.City
+FROM
+    Employees AS e
+WHERE
+    e.City NOT IN (
+        SELECT DISTINCT c.City
+        FROM Customers AS c
+        JOIN Orders AS o ON c.CustomerID = o.CustomerID
+        WHERE c.City IS NOT NULL
+    );
+
+SELECT DISTINCT
+    e.City
+FROM
+    Employees AS e
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM Customers AS c
+    JOIN Orders AS o ON c.CustomerID = o.CustomerID
+    WHERE c.City = e.City
+);
+
+--10
+WITH EmployeeOrderCounts AS (
+    SELECT TOP 1
+        e.City,
+        COUNT(o.OrderID) AS NumberOfOrders
+    FROM
+        Employees AS e
+    JOIN
+        Orders AS o ON e.EmployeeID = o.EmployeeID
+    GROUP BY
+        e.City
+    ORDER BY
+        NumberOfOrders DESC
+),
+CustomerQuantityCounts AS (
+    SELECT TOP 1
+        c.City,
+        SUM(od.Quantity) AS TotalQuantityOrdered
+    FROM
+        Customers AS c
+    JOIN
+        Orders AS o ON c.CustomerID = o.CustomerID
+    JOIN
+        "Order Details" AS od ON o.OrderID = od.OrderID
+    GROUP BY
+        c.City
+    ORDER BY
+        TotalQuantityOrdered DESC
+)
+SELECT
+    eoc.City
+FROM
+    EmployeeOrderCounts AS eoc
+JOIN
+    CustomerQuantityCounts AS cqc ON eoc.City = cqc.City;
+
+--11
+--Using ROW_NUMBER() and CTE (Common Table Expression)
